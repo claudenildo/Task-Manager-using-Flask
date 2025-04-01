@@ -83,7 +83,7 @@ jobs:
           /opt/dependency-check/bin/dependency-check.sh --scan . --format HTML --out reports/dependency-check-report.html
 
       - name: Upload do Relatório de Dependências
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: reports/dependency-check-report.html

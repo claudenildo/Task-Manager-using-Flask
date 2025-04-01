@@ -29,9 +29,9 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest  # Garante que pytest está instalado
+          pip install pytest bandit  # Adicionando bandit para análise estática
 
-  tests:
+  test:
     runs-on: ubuntu-latest
     needs: build
 
@@ -48,7 +48,42 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest  # Garante que pytest está instalado
+          pip install pytest
 
       - name: Executar Testes Unitários
-        run: pytest
+        run: pytest tests/
+
+  security:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Bandit
+        run: pip install bandit
+
+      - name: Análise Estática de Código com Bandit
+        run: bandit -r . -ll
+
+      - name: Instalar OWASP Dependency-Check
+        run: |
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
+          unzip dependency-check-8.4.0-release.zip
+          mv dependency-check /opt/dependency-check
+
+      - name: Análise de Dependências com OWASP Dependency-Check
+        run: |
+          /opt/dependency-check/bin/dependency-check.sh --scan . --format HTML --out reports/dependency-check-report.html
+
+      - name: Upload do Relatório de Dependências
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: reports/dependency-check-report.html

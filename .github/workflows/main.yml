@@ -1,0 +1,68 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - staging
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Checkout do Código
+        uses: actions/checkout@v3
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+
+      - name: 📦 Instalar Dependências
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔍 Verificar Sintaxe (Compilação)
+        run: |
+          python -m py_compile $(find . -name "*.py")
+
+  tests:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Checkout do Código
+        uses: actions/checkout@v3
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
+
+      - name: 📦 Instalar Dependências
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🧪 Executar Testes Unitários
+        run: |
+          pytest
+
+      - name: 🔍 Testes de Integração
+        run: |
+          echo "Rodando testes de integração"
+
+      - name: 🔍 Testes Funcionais
+        run: |
+          echo "Rodando testes funcionais"
+
+  deploy:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Deploy para Servidor (Ajuste conforme necessário)
+        run: echo "Deploy seria feito aqui"

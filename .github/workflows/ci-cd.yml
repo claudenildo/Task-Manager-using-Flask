@@ -78,6 +78,9 @@ jobs:
           unzip dependency-check-8.4.0-release.zip
           mv dependency-check /opt/dependency-check
 
+      - name: Criar diretório para relatórios
+        run: mkdir -p reports
+
       - name: Análise de Dependências com OWASP Dependency-Check
         run: |
           /opt/dependency-check/bin/dependency-check.sh --scan . --format HTML --out reports/dependency-check-report.html

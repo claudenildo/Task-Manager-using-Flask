@@ -25,10 +25,12 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Instalar dependências
-        run: |
-          pip install -r requirements.txt
+     - name: Instalar Dependências
+  run: |
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    pip install pytest  # Garante que pytest está instalado
 
-      - name: Rodar testes
-        run: |
-          python -m unittest discover tests
+- name: Executar Testes Unitários
+  run: pytest
+

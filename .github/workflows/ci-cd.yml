@@ -29,64 +29,97 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest bandit  # Adicionando bandit para análise estática
+          pip install pytest bandit
 
-  test:
-    runs-on: ubuntu-latest
-    needs: build
+test:
+  runs-on: ubuntu-latest
+  needs: build
 
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v3
+  steps:
+    - name: Checkout do código
+      uses: actions/checkout@v3
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Instalar Dependências
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+    - name: Instalar Dependências
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest
 
-      - name: Executar Testes Unitários
-        run: pytest tests/
+    - name: Executar Testes Unitários
+      run: pytest tests/
 
-  security:
-    runs-on: ubuntu-latest
-    needs: build
+security:
+  runs-on: ubuntu-latest
+  needs: test
 
-    steps:
-      - name: Checkout do código
-        uses: actions/checkout@v3
+  steps:
+    - name: Análise Estática de Código com Bandit
+      run: bandit -r . -ll
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Instalar OWASP Dependency-Check
+      run: |
+        wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
+        unzip dependency-check-8.4.0-release.zip
+        mv dependency-check /opt/dependency-check
 
-      - name: Instalar Bandit
-        run: pip install bandit
+    - name: Análise de Dependências com OWASP Dependency-Check
+      run: |
+        /opt/dependency-check/bin/dependency-check.sh --scan . --format HTML --out reports/dependency-check-report.html
 
-      - name: Análise Estática de Código com Bandit
-        run: bandit -r . -ll
+    - name: Upload do Relatório de Dependências
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-report
+        path: reports/dependency-check-report.html
 
-      - name: Instalar OWASP Dependency-Check
-        run: |
-          wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
-          unzip dependency-check-8.4.0-release.zip
-          mv dependency-check /opt/dependency-check
+dast:
+  runs-on: ubuntu-latest
+  needs: security
 
-      - name: Criar diretório para relatórios
-        run: mkdir -p reports
+  steps:
+    - name: Checkout do código
+      uses: actions/checkout@v3
 
-      - name: Análise de Dependências com OWASP Dependency-Check
-        run: |
-          /opt/dependency-check/bin/dependency-check.sh --scan . --format HTML --out reports/dependency-check-report.html
+    - name: Iniciar Aplicação em Container
+      run: |
+        docker-compose up -d
 
-      - name: Upload do Relatório de Dependências
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-check-report
-          path: reports/dependency-check-report.html
+    - name: Aguardar Aplicação Inicializar
+      run: sleep 30
+
+    - name: Executar OWASP ZAP Scan
+      run: |
+        docker run --network="host" -v $(pwd):/zap/wrk -t owasp/zap2docker-stable zap-baseline.py \
+        -t http://localhost:8080 -r zap-report.html
+
+    - name: Upload do Relatório ZAP
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-security-report
+        path: zap-report.html
+
+deploy:
+  runs-on: ubuntu-latest
+  needs: dast
+
+  steps:
+    - name: Deploy para Staging
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        echo "Deploy para Staging..."
+        # Comandos de deploy para staging aqui
+
+    - name: Aprovação para Produção
+      if: github.ref == 'refs/heads/main'
+      uses: hmarr/auto-approve-action@v3
+
+    - name: Deploy para Produção
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "Deploy para Produção..."
+        # Comandos de deploy para produção aqui

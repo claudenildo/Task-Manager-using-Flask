@@ -31,121 +31,121 @@ jobs:
           pip install -r requirements.txt
           pip install pytest bandit
 
-test:
-  runs-on: ubuntu-latest
-  needs: build
+  test:
+    runs-on: ubuntu-latest
+    needs: build
 
-  steps:
-    - name: Checkout do código
-      uses: actions/checkout@v3
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
 
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Instalar Dependências
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest
+      - name: Instalar Dependências
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
 
-    - name: Executar Testes Unitários
-      run: pytest tests/
+      - name: Executar Testes Unitários
+        run: pytest tests/
 
-security:
-  runs-on: ubuntu-latest
-  needs: test
+  security:
+    runs-on: ubuntu-latest
+    needs: test
 
-  steps:
-    - name: Checkout do código
-      uses: actions/checkout@v3
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
 
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Instalar Dependências
-      run: |
-        pip install --upgrade pip
-        pip install bandit
+      - name: Instalar Dependências
+        run: |
+          pip install --upgrade pip
+          pip install bandit
 
-    - name: Análise Estática de Código com Bandit
-      run: bandit -r . -ll
+      - name: Análise Estática de Código com Bandit
+        run: bandit -r . -ll
 
-dast:
-  runs-on: ubuntu-latest
-  needs: security
+  dast:
+    runs-on: ubuntu-latest
+    needs: security
 
-  steps:
-    - name: Checkout do código
-      uses: actions/checkout@v3
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
 
-    - name: Iniciar Aplicação em Container
-      run: |
-        docker-compose up -d
+      - name: Iniciar Aplicação em Container
+        run: |
+          docker-compose up -d
 
-    - name: Aguardar Aplicação Inicializar
-      run: sleep 30
+      - name: Aguardar Aplicação Inicializar
+        run: sleep 30
 
-    - name: Executar OWASP ZAP Scan
-      run: |
-        docker run --network="host" -v $(pwd):/zap/wrk -t owasp/zap2docker-stable zap-baseline.py \
-        -t http://localhost:8080 -r zap-report.html
+      - name: Executar OWASP ZAP Scan
+        run: |
+          docker run --network="host" -v $(pwd):/zap/wrk -t owasp/zap2docker-stable zap-baseline.py \
+          -t http://localhost:8080 -r zap-report.html
 
-    - name: Upload do Relatório ZAP
-      uses: actions/upload-artifact@v4
-      with:
-        name: zap-security-report
-        path: zap-report.html
+      - name: Upload do Relatório ZAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-security-report
+          path: zap-report.html
 
-deploy:
-  runs-on: ubuntu-latest
-  needs: dast
+  deploy:
+    runs-on: ubuntu-latest
+    needs: dast
 
-  steps:
-    - name: Deploy para Staging
-      if: github.ref == 'refs/heads/develop'
-      run: |
-        echo "Deploy para Staging..."
-        # Comandos de deploy para staging aqui
+    steps:
+      - name: Deploy para Staging
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          echo "Deploy para Staging..."
+          # Comandos de deploy para staging aqui
 
-    - name: Aprovação para Produção
-      if: github.ref == 'refs/heads/main'
-      uses: hmarr/auto-approve-action@v3
+      - name: Aprovação para Produção
+        if: github.ref == 'refs/heads/main'
+        uses: hmarr/auto-approve-action@v3
 
-    - name: Deploy para Produção
-      if: github.ref == 'refs/heads/main'
-      run: |
-        echo "Deploy para Produção..."
-        # Comandos de deploy para produção aqui
+      - name: Deploy para Produção
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploy para Produção..."
+          # Comandos de deploy para produção aqui
 
-monitoring:
-  runs-on: ubuntu-latest
-  needs: deploy
+  monitoring:
+    runs-on: ubuntu-latest
+    needs: deploy
 
-  steps:
-    - name: Instalar Prometheus e Node Exporter
-      run: |
-        docker run -d --name prometheus -p 9090:9090 prom/prometheus
-        docker run -d --name node-exporter -p 9100:9100 prom/node-exporter
+    steps:
+      - name: Instalar Prometheus e Node Exporter
+        run: |
+          docker run -d --name prometheus -p 9090:9090 prom/prometheus
+          docker run -d --name node-exporter -p 9100:9100 prom/node-exporter
 
-    - name: Configurar Alertas com Prometheus
-      run: |
-        echo "Configurando alertas de segurança..."
-        # Adicionar regras de alerta para detecção de anomalias
+      - name: Configurar Alertas com Prometheus
+        run: |
+          echo "Configurando alertas de segurança..."
+          # Adicionar regras de alerta para detecção de anomalias
 
-    - name: Instalar e Configurar Fail2Ban
-      run: |
-        sudo apt update && sudo apt install -y fail2ban
-        sudo systemctl enable fail2ban && sudo systemctl start fail2ban
+      - name: Instalar e Configurar Fail2Ban
+        run: |
+          sudo apt update && sudo apt install -y fail2ban
+          sudo systemctl enable fail2ban && sudo systemctl start fail2ban
 
-    - name: Monitorar Logs de Segurança
-      run: |
-        tail -f /var/log/auth.log &
+      - name: Monitorar Logs de Segurança
+        run: |
+          tail -f /var/log/auth.log &
 
-    - name: Enviar Alertas de Segurança
-      run: |
-        echo "Monitoramento ativo. Enviando alertas para tentativas de ataque..."
-        # Configuração de notificações (exemplo: Slack, Email, PagerDuty)
+      - name: Enviar Alertas de Segurança
+        run: |
+          echo "Monitoramento ativo. Enviando alertas para tentativas de ataque..."
+          # Configuração de notificações (exemplo: Slack, Email, PagerDuty)

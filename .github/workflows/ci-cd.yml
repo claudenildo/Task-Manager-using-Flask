@@ -89,7 +89,12 @@ jobs:
 
       - name: Iniciar Aplicação em Container
         run: |
-          docker-compose up -d
+          if [ -f "docker-compose.yml" ]; then
+            docker-compose up -d
+          else
+            echo "Erro: Arquivo docker-compose.yml não encontrado!"
+            exit 1
+          fi
 
       - name: Aguardar Aplicação Inicializar
         run: sleep 30

@@ -1,68 +1,58 @@
-name: CI/CD Pipeline
+stages:
+  - build
+  - test
+  - review
+  - staging
+  - security-test
+  - deploy
 
-on:
-  push:
-    branches:
-      - main
-      - develop
-      - staging
-  pull_request:
-    branches:
-      - main
+variables:
+  STAGING_URL: "http://staging.example.com"
+  ZAP_URL: "http://zap-container:8080"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🚀 Checkout do Código
-        uses: actions/checkout@v3
+build:
+  stage: build
+  script:
+    - echo "Construindo a aplicação..."
+    - docker build -t my-app .
 
-      - name: 🐍 Configurar Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.9"
+test:
+  stage: test
+  script:
+    - echo "Executando testes automatizados..."
+    - pytest tests/
 
-      - name: 📦 Instalar Dependências
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+review:
+  stage: review
+  script:
+    - echo "Criando ambiente de revisão..."
+    - docker-compose -f docker-compose.review.yml up -d
+  only:
+    - merge_requests
 
-      - name: 🔍 Verificar Sintaxe (Compilação)
-        run: |
-          python -m py_compile $(find . -name "*.py")
+staging:
+  stage: staging
+  script:
+    - echo "Fazendo deploy no ambiente de stage..."
+    - docker-compose -f docker-compose.stage.yml up -d
+  only:
+    - main
 
-  tests:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🚀 Checkout do Código
-        uses: actions/checkout@v3
+security-test:
+  stage: security-test
+  script:
+    - echo "Rodando OWASP ZAP no ambiente de stage..."
+    - docker run --rm -t ghcr.io/zaproxy/zaproxy:stable zap.sh -quickurl "$STAGING_URL" -quickout zap_report.html
+    - echo "Relatório gerado: zap_report.html"
+  only:
+    - main
+  dependencies:
+    - staging
 
-      - name: 🐍 Configurar Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.9"
-
-      - name: 📦 Instalar Dependências
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: 🧪 Executar Testes Unitários
-        run: |
-          pytest
-
-      - name: 🔍 Testes de Integração
-        run: |
-          echo "Rodando testes de integração"
-
-      - name: 🔍 Testes Funcionais
-        run: |
-          echo "Rodando testes funcionais"
-
-  deploy:
-    needs: tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🚀 Deploy para Servidor (Ajuste conforme necessário)
-        run: echo "Deploy seria feito aqui"
+deploy:
+  stage: deploy
+  script:
+    - echo "Fazendo deploy para produção..."
+    - docker-compose -f docker-compose.prod.yml up -d
+  only:
+    - tags

@@ -1,8 +1,10 @@
 flask==2.0.3
 flask-login==0.6.0
 flask-sqlalchemy==2.5.1
+flask-bcrypt
 flask-wtf==0.15.1
 jinja2==3.0.3
 werkzeug==2.0.3
 sqlalchemy==1.4.46
 wtforms==2.3.3
+sentry-sdk
